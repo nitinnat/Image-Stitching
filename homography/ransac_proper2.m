@@ -1,12 +1,19 @@
-function [best_H,leastError,H_collection] = ransac_proper2(fp1MatchInds,fp2MatchInds,iters, t)
-%iters = 500
+function [best_H,leastError,bestInlierInds,bestInlierResidual] = ransac_proper2(fp1MatchInds,fp2MatchInds,iters, t)
+
+%{
+RANSAC function for homography
+Inputs: Both sets of matching points, number of iterations and error threshold t
+Outputs: best homography, least residual error, inlier indices, inlier residual error
+
+%}
 numRandInds = 4;
-%t = 10;
-d = floor(length(fp1MatchInds) * 0.60);
+
+d = floor(length(fp1MatchInds) * 0.40);
 
 best_H = [];
 
-best_inliers = 0;
+bestInlierInds = 0;
+bestInlierResidual = Inf;
 count = 1;
 
 H_collection = cell(0);
@@ -31,11 +38,17 @@ for iter = 1:iters
     fp2OtherIndsPred = fp2OtherIndsPred ./ fp2OtherIndsPred(3,:);
     fprintf('Size of Predicted Output Matrix for other points is [%d,%d] \n',...
         size(fp2OtherIndsPred,1),size(fp2OtherIndsPred,2));
-    sqError = (fp2OtherInds' - fp2OtherIndsPred').^2;
-    ssdError = (sqError(:,1) + sqError(:,2));
-    ssdError,t
+    
+    %sqError = (fp2OtherInds' - fp2OtherIndsPred').^2;
+    %ssdError = (sqError(:,1) + sqError(:,2));
+    %ssdError,t;
+    
+    %residual function expects columnwise inputs of size N x 3
+    ssdError = calcResiduals(H,fp1OtherInds',fp2OtherInds')
     inlierInds = find(ssdError < t);
-    if inlierInds >= d
+    size(inlierInds)
+    if length(inlierInds) > d
+        fprintf('No. of inliers obtained: %d ',size(inlierInds));
         %Refit on all these inlier points.
         fp1RefitInds = fp1OtherInds(:,inlierInds)';
         fp2RefitInds = fp2OtherInds(:,inlierInds)';
@@ -46,25 +59,28 @@ for iter = 1:iters
         
         %Estimate best fit error on all the points
         fp1allPointsInput = [fp1MatchInds';ones(1,size(fp1MatchInds,1))];
-        fp2allPointsPred = H*fp1allPointsInput;
-        fp2allPointsPred = fp2allPointsPred ./ fp2allPointsPred(3,:);
-        fp2allPointsPred = fp2allPointsPred(1:2,:)';
-        sqError = (fp2allPointsPred' - fp2MatchInds').^2;
-        ssdError = sum(sqError(:,1) + sqError(:,2));
-        H_collection{count,2} = ssdError;
-        H_collection{count,3} = fp2OtherInds(:,inlierInds)';
-        H_collection{count,4} = fp2allPointsPred(1:2,:)';
+        size(fp1allPointsInput),size(fp2MatchInds)
+        ssdError = calcResiduals(H,fp1allPointsInput',[fp2MatchInds,ones(length(fp2MatchInds),1)]);
+        ssdErrorInliers = calcResiduals(H,fp1RefitInds,fp2RefitInds);
+
+        H_collection{count,2} = mean(ssdError);
+        H_collection{count,4} = mean(ssdErrorInliers);
+        %Store the inlier matches
+        H_collection{count,3} = [fp1OtherInds(:,inlierInds)', fp2OtherInds(:,inlierInds)'];
+        %H_collection{count,4} = fp2allPointsPred(1:2,:)';
         count = count + 1;
     end
 end
 leastError = Inf;
 for i = 1:size(H_collection,1)
     if H_collection{i,2} < leastError
-        leastError = H_collection{i,2}
+        leastError = H_collection{i,2};
         best_H = H_collection{i,1};
+        bestInlierInds = H_collection{i,3};
+        bestInlierResidual = H_collection{i,4};
     end
     
 end
- fp1allPointsInput = [fp1MatchInds';ones(1,size(fp1MatchInds,1))];
+ 
 
 end

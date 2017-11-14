@@ -1,11 +1,17 @@
 function [fp1MatchInds,fp2MatchInds] = findPutativeMatches(im1,im2,threshold,kernel)
 
+%{
+Finds putative matches.
+Inputs: Image 1, Image 2, distance threshold, kernel size/neighbourhood size.
+Outputs: Two sets of matching points, fp1MatchInds and fp2MatchInds.
+%}
 
 
 
     sigma = 2;
     thresh = 0.02;
     radius = 2;
+ 
     
     
     [~,r1,c1] = harris(im1, sigma, thresh, radius,0);

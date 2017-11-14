@@ -1,5 +1,5 @@
 function [] = plotfps(im1,im2,fp1,fp2)
-    fp1, fp2
+    
     x1 = fp1(:,1);
     y1 = fp1(:,2);
     x2 = fp2(:,1);
